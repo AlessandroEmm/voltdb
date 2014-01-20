@@ -248,7 +248,7 @@ void PersistentTable::truncateTable(VoltDBEngine* engine) {
         emptyTable->m_tuplesPinnedByUndo = emptyTable->m_tupleCount;
         emptyTable->m_invisibleTuplesPendingDeleteCount = emptyTable->m_tupleCount;
         // Create and register an undo action.
-        uq->registerUndoAction(new (*uq) PersistentTableUndoTruncateTableAction(engine, tcd, this, emptyTable),this);
+        uq->registerUndoAction(new (*uq) PersistentTableUndoTruncateTableAction(engine, tcd, this, emptyTable));
         return;
     }
 
