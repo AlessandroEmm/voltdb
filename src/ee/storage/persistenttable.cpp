@@ -64,6 +64,7 @@
 #include "catalog/catalog.h"
 #include "catalog/database.h"
 #include "catalog/table.h"
+#include "catalog/materializedviewinfo.h"
 #include "indexes/tableindex.h"
 #include "indexes/tableindexfactory.h"
 #include "logging/LogManager.h"
@@ -213,16 +214,23 @@ void PersistentTable::deleteAllPersistentTuples(bool freeAllocatedStrings, bool 
 void PersistentTable::truncateTableForUndo(VoltDBEngine * engine, TableCatalogDelegate * tcd, PersistentTable *originalTable) {
     VOLT_DEBUG("**** Truncate table undo *****\n");
 
+    std::vector<MaterializedViewMetadata *> originalViews = originalTable->views();
+    BOOST_FOREACH(MaterializedViewMetadata * originalView, originalViews) {
+        PersistentTable * targetTable = originalView->targetTable();
+        TableCatalogDelegate * targetTcd =  engine->getTableDelegate(targetTable->name());
+
+        targetTcd->setTable(targetTable);
+    }
+
     tcd->setTable(originalTable);
-    engine->rebuildSingleTableCollection(tcd);
+    engine->rebuildTableCollections();
 }
 
 void PersistentTable::truncateTableRelease(PersistentTable *originalTable) {
     VOLT_DEBUG("**** Truncate table release *****\n");
-
-    originalTable->decrementRefcount();
     m_tuplesPinnedByUndo = 0;
     m_invisibleTuplesPendingDeleteCount = 0;
+    originalTable->decrementRefcount();
 }
 
 
@@ -253,10 +261,8 @@ void PersistentTable::truncateTable(VoltDBEngine* engine) {
         PersistentTable * targetEmptyTable = targetTcd->getPersistentTable();
         assert(targetEmptyTable);
         new MaterializedViewMetadata(emptyTable, targetEmptyTable, originalView->getMaterializedViewInfo());
-
-        engine->rebuildSingleTableCollection(targetTcd);
     }
-    engine->rebuildSingleTableCollection(tcd);
+    engine->rebuildTableCollections();
 
     UndoQuantum *uq = ExecutorContext::currentUndoQuantum();
     if (uq) {

@@ -436,6 +436,7 @@ class __attribute__((visibility("default"))) VoltDBEngine {
          */
         void executeTask(TaskType taskType, const char* taskParams);
 
+        void rebuildTableCollections();
         void rebuildSingleTableCollection(TableCatalogDelegate * tcd);
     private:
 
@@ -458,7 +459,7 @@ class __attribute__((visibility("default"))) VoltDBEngine {
                           TempTableLimits* limits);
         bool initCluster();
         void processCatalogDeletes(int64_t timestamp);
-        void rebuildTableCollections();
+
         void initMaterializedViews(bool addAll);
         bool updateCatalogDatabaseReference();
 
