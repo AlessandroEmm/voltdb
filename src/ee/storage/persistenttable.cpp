@@ -61,6 +61,9 @@
 #include "common/types.h"
 #include "common/RecoveryProtoMessage.h"
 #include "common/StreamPredicateList.h"
+#include "catalog/catalog.h"
+#include "catalog/database.h"
+#include "catalog/table.h"
 #include "indexes/tableindex.h"
 #include "indexes/tableindexfactory.h"
 #include "logging/LogManager.h"
@@ -217,7 +220,7 @@ void PersistentTable::truncateTableForUndo(VoltDBEngine * engine, TableCatalogDe
 void PersistentTable::truncateTableRelease(PersistentTable *originalTable) {
     VOLT_DEBUG("**** Truncate table release *****\n");
 
-    originalTable->deleteAllPersistentTuples(true, false);
+    originalTable->decrementRefcount();
     m_tuplesPinnedByUndo = 0;
     m_invisibleTuplesPendingDeleteCount = 0;
 }
@@ -226,21 +229,33 @@ void PersistentTable::truncateTableRelease(PersistentTable *originalTable) {
 void PersistentTable::truncateTable(VoltDBEngine* engine) {
     TableCatalogDelegate * tcd = engine->getTableDelegate(m_name);
     assert(tcd);
-    PersistentTable * emptyTable = TableFactory::cloneEmptyPersistentTableWithIndexes(this);
+
+    catalog::Table *catalogTable = engine->getCatalogTable(m_name);
+    if (tcd->init(*engine->getDatabase(), *catalogTable) != 0) {
+        VOLT_ERROR("Failed to initialize table '%s' from catalog",m_name.c_str());
+        return ;
+    }
+    assert(tcd->exportEnabled());
+    PersistentTable * emptyTable = tcd->getPersistentTable();
+    assert(emptyTable);
     assert(emptyTable->views().size() == 0);
 
     // add matView
     BOOST_FOREACH(MaterializedViewMetadata * originalView, m_views) {
         PersistentTable * targetTable = originalView->targetTable();
-        PersistentTable * targetEmptyTable = TableFactory::cloneEmptyPersistentTableWithIndexes(targetTable);
+        TableCatalogDelegate * targetTcd =  engine->getTableDelegate(targetTable->name());
+        catalog::Table *catalogViewTable = engine->getCatalogTable(targetTable->name());
+
+        if (targetTcd->init(*engine->getDatabase(), *catalogViewTable) != 0) {
+            VOLT_ERROR("Failed to initialize table '%s' from catalog",targetTable->name().c_str());
+            return ;
+        }
+        PersistentTable * targetEmptyTable = targetTcd->getPersistentTable();
+        assert(targetEmptyTable);
         new MaterializedViewMetadata(emptyTable, targetEmptyTable, originalView->getMaterializedViewInfo());
 
-        TableCatalogDelegate * targetTcd =  engine->getTableDelegate(targetTable->name());
-        targetTcd->setTable(targetEmptyTable);
         engine->rebuildSingleTableCollection(targetTcd);
     }
-
-    tcd->setTable(emptyTable);
     engine->rebuildSingleTableCollection(tcd);
 
     UndoQuantum *uq = ExecutorContext::currentUndoQuantum();
@@ -252,7 +267,7 @@ void PersistentTable::truncateTable(VoltDBEngine* engine) {
         return;
     }
 
-    deleteAllPersistentTuples(true, false);
+    this->decrementRefcount();
 }
 
 
