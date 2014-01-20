@@ -193,7 +193,12 @@ void PersistentTable::nextFreeTuple(TableTuple *tuple) {
     }
 }
 
-void PersistentTable::deleteAllTuples(bool freeAllocatedStrings, bool fallible) {
+void PersistentTable::deleteAllTuples(bool freeAllocatedStrings) {
+    // nothing interesting
+    deleteAllPersistentTuples(freeAllocatedStrings, true);
+}
+
+void PersistentTable::deleteAllPersistentTuples(bool freeAllocatedStrings, bool fallible) {
     // nothing interesting
     TableIterator ti(this, m_data.begin());
     TableTuple tuple(m_schema);
@@ -212,7 +217,7 @@ void PersistentTable::truncateTableForUndo(VoltDBEngine * engine, TableCatalogDe
 void PersistentTable::truncateTableRelease(PersistentTable *originalTable) {
     VOLT_DEBUG("**** Truncate table release *****\n");
 
-    originalTable->deleteAllTuples(true, false);
+    originalTable->deleteAllPersistentTuples(true, false);
     m_tuplesPinnedByUndo = 0;
     m_invisibleTuplesPendingDeleteCount = 0;
 }
@@ -247,7 +252,7 @@ void PersistentTable::truncateTable(VoltDBEngine* engine) {
         return;
     }
 
-    deleteAllTuples(true, false);
+    deleteAllPersistentTuples(true, false);
 }
 
 

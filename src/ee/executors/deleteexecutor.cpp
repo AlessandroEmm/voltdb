@@ -70,10 +70,6 @@ bool DeleteExecutor::p_init(AbstractPlanNode *abstract_node,
     assert(m_node);
     assert(m_node->getTargetTable());
 
-    //target table should be persistenttable
-    m_targetTable = dynamic_cast<PersistentTable*>(m_node->getTargetTable());
-    assert(m_targetTable);
-
     setDMLCountOutputTable(limits);
 
     m_truncate = m_node->getTruncate();
@@ -87,17 +83,15 @@ bool DeleteExecutor::p_init(AbstractPlanNode *abstract_node,
     assert(m_inputTable);
 
     m_inputTuple = TableTuple(m_inputTable->schema());
-    m_targetTuple = TableTuple(m_targetTable->schema());
-
     return true;
 }
 
 bool DeleteExecutor::p_execute(const NValueArray &params) {
     // target table should be persistenttable
     // update target table reference from table delegate
-    m_targetTable = dynamic_cast<PersistentTable*>(m_node->getTargetTable());
+    PersistentTable* m_targetTable = dynamic_cast<PersistentTable*>(m_node->getTargetTable());
     assert(m_targetTable);
-    m_targetTuple = TableTuple(m_targetTable->schema());
+    TableTuple m_targetTuple = TableTuple(m_targetTable->schema());
 
     int64_t modified_tuples = 0;
 
@@ -112,8 +106,7 @@ bool DeleteExecutor::p_execute(const NValueArray &params) {
                    (int)m_targetTable->visibleTupleCount(),
                    (int)m_targetTable->allocatedTupleCount());
 
-        // actually delete all the tuples
-//        m_targetTable->deleteAllTuples(true);
+        // actually delete all the tuples: undo by table not by each tuple.
         m_targetTable->truncateTable(m_engine);
     }
     else
