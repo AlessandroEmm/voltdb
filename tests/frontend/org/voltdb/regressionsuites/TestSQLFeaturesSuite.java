@@ -444,7 +444,7 @@ public class TestSQLFeaturesSuite extends RegressionSuite {
         }
     }
 
-    public void testTruncateTable() throws Exception {
+    public void notestTruncateTable() throws Exception {
         System.out.println("STARTING TRUNCATE TABLE......");
         Client client = getClient();
         VoltTable vt = null;
