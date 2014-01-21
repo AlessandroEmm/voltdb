@@ -39,6 +39,7 @@ private:
      */
     virtual void undo() {
         m_emptyTable->truncateTableForUndo(m_engine, m_tcd, m_originalTable);
+        m_emptyTable->decrementRefcount();
     }
 
     /*
