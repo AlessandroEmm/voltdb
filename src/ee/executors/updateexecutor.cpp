@@ -82,8 +82,8 @@ bool UpdateExecutor::p_init(AbstractPlanNode* abstract_node,
     assert(m_inputTable);
 
     // target table should be persistenttable
-    m_targetTable = dynamic_cast<PersistentTable*>(m_node->getTargetTable());
-    assert(m_targetTable);
+    PersistentTable*targetTable = dynamic_cast<PersistentTable*>(m_node->getTargetTable());
+    assert(targetTable);
 
     setDMLCountOutputTable(limits);
 
@@ -104,7 +104,7 @@ bool UpdateExecutor::p_init(AbstractPlanNode* abstract_node,
     }
 
     vector<string> output_column_names = proj_node->getOutputColumnNames();
-    const vector<string> &targettable_column_names = m_targetTable->getColumnNames();
+    const vector<string> &targettable_column_names = targetTable->getColumnNames();
 
     /*
      * The first output column is the tuple address expression and it isn't part of our output so we skip
@@ -124,10 +124,10 @@ bool UpdateExecutor::p_init(AbstractPlanNode* abstract_node,
     m_inputTuple = TableTuple(m_inputTable->schema());
 
     // for target table related info.
-    m_partitionColumn = m_targetTable->partitionColumn();
+    m_partitionColumn = targetTable->partitionColumn();
     m_partitionColumnIsString = false;
     if (m_partitionColumn != -1) {
-        if (m_targetTable->schema()->columnType(m_partitionColumn) == VALUE_TYPE_VARCHAR) {
+        if (targetTable->schema()->columnType(m_partitionColumn) == VALUE_TYPE_VARCHAR) {
             m_partitionColumnIsString = true;
         }
     }
@@ -139,18 +139,18 @@ bool UpdateExecutor::p_execute(const NValueArray &params) {
     assert(m_inputTable);
 
     // target table should be persistenttable
-    m_targetTable = dynamic_cast<PersistentTable*>(m_node->getTargetTable());
-    assert(m_targetTable);
-    TableTuple targetTuple = TableTuple(m_targetTable->schema());
+    PersistentTable* targetTable = dynamic_cast<PersistentTable*>(m_node->getTargetTable());
+    assert(targetTable);
+    TableTuple targetTuple = TableTuple(targetTable->schema());
 
     VOLT_TRACE("INPUT TABLE: %s\n", m_inputTable->debug().c_str());
-    VOLT_TRACE("TARGET TABLE - BEFORE: %s\n", m_targetTable->debug().c_str());
+    VOLT_TRACE("TARGET TABLE - BEFORE: %s\n", targetTable->debug().c_str());
 
     // determine which indices are updated by this executor
     // iterate through all target table indices and see if they contain
     // columns mutated by this executor
     std::vector<TableIndex*> indexesToUpdate;
-    const std::vector<TableIndex*>& allIndexes = m_targetTable->allIndexes();
+    const std::vector<TableIndex*>& allIndexes = targetTable->allIndexes();
     BOOST_FOREACH(TableIndex *index, allIndexes) {
         bool indexKeyUpdated = false;
         BOOST_FOREACH(int colIndex, index->getColumnIndices()) {
@@ -169,7 +169,7 @@ bool UpdateExecutor::p_execute(const NValueArray &params) {
     }
 
     assert(m_inputTuple.sizeInValues() == m_inputTable->columnCount());
-    assert(targetTuple.sizeInValues() == m_targetTable->columnCount());
+    assert(targetTuple.sizeInValues() == targetTable->columnCount());
     TableIterator input_iterator = m_inputTable->iterator();
     while (input_iterator.next(m_inputTuple)) {
         //
@@ -189,7 +189,7 @@ bool UpdateExecutor::p_execute(const NValueArray &params) {
         // bringing garbage with it, we're only going to copy what we really
         // need to into the target tuple.
         //
-        TableTuple &tempTuple = m_targetTable->getTempTupleInlined(targetTuple);
+        TableTuple &tempTuple = targetTable->getTempTupleInlined(targetTuple);
         for (int map_ctr = 0; map_ctr < m_inputTargetMapSize; map_ctr++) {
             tempTuple.setNValue(m_inputTargetMap[map_ctr].second,
                                 m_inputTuple.getNValue(m_inputTargetMap[map_ctr].first));
@@ -205,17 +205,17 @@ bool UpdateExecutor::p_execute(const NValueArray &params) {
             // if it doesn't map to this site
             if (!isLocal) {
                 throw ConstraintFailureException(
-                         dynamic_cast<PersistentTable*>(m_targetTable),
+                         dynamic_cast<PersistentTable*>(targetTable),
                          tempTuple,
                          "An update to a partitioning column triggered a partitioning error. "
                          "Updating a partitioning column is not supported. Try delete followed by insert.");
             }
         }
 
-        if (!m_targetTable->updateTupleWithSpecificIndexes(targetTuple, tempTuple,
+        if (!targetTable->updateTupleWithSpecificIndexes(targetTuple, tempTuple,
                                                            indexesToUpdate)) {
             VOLT_INFO("Failed to update tuple from table '%s'",
-                      m_targetTable->name().c_str());
+                      targetTable->name().c_str());
             return false;
         }
     }
@@ -231,7 +231,7 @@ bool UpdateExecutor::p_execute(const NValueArray &params) {
         return false;
     }
 
-    VOLT_TRACE("TARGET TABLE - AFTER: %s\n", m_targetTable->debug().c_str());
+    VOLT_TRACE("TARGET TABLE - AFTER: %s\n", targetTable->debug().c_str());
     // TODO lets output result table here, not in result executor. same thing in
     // delete/insert
 

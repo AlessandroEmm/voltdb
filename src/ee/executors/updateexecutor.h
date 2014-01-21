@@ -70,7 +70,6 @@ public:
     {
         m_inputTargetMapSize = -1;
         m_inputTable = NULL;
-        m_targetTable = NULL;
         m_engine = engine;
         m_partitionColumn = -1;
     }
@@ -86,7 +85,6 @@ protected:
     int m_inputTargetMapSize;
 
     TempTable* m_inputTable;
-    PersistentTable* m_targetTable;
 
     TableTuple m_inputTuple;
     int m_partitionColumn;
