@@ -216,8 +216,9 @@ void PersistentTable::truncateTableForUndo(VoltDBEngine * engine, TableCatalogDe
         PersistentTable *originalTable) {
     VOLT_DEBUG("**** Truncate table undo *****\n");
 
+    std::vector<MaterializedViewMetadata *> views = originalTable->views();
     // reset all view table pointers
-    BOOST_FOREACH(MaterializedViewMetadata * originalView, originalTable->views()) {
+    BOOST_FOREACH(MaterializedViewMetadata * originalView, views) {
         PersistentTable * targetTable = originalView->targetTable();
         TableCatalogDelegate * targetTcd =  engine->getTableDelegate(targetTable->name());
 
