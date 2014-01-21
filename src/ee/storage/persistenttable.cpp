@@ -212,10 +212,20 @@ void PersistentTable::deleteAllPersistentTuples(bool freeAllocatedStrings, bool 
     }
 }
 
-void PersistentTable::truncateTableForUndo(VoltDBEngine * engine, TableCatalogDelegate * tcd, PersistentTable *originalTable) {
+void PersistentTable::truncateTableForUndo(VoltDBEngine * engine, TableCatalogDelegate * tcd,
+        PersistentTable *originalTable) {
     VOLT_DEBUG("**** Truncate table undo *****\n");
 
+    // reset all view table pointers
+    BOOST_FOREACH(MaterializedViewMetadata * originalView, originalTable->views()) {
+        PersistentTable * targetTable = originalView->targetTable();
+        TableCatalogDelegate * targetTcd =  engine->getTableDelegate(targetTable->name());
+
+        targetTcd->setTable(targetTable);
+    }
+    // reset base table pointer
     tcd->setTable(originalTable);
+
     engine->rebuildTableCollections();
 }
 

@@ -154,16 +154,16 @@ bool IndexScanExecutor::p_init(AbstractPlanNode *abstractNode,
 void IndexScanExecutor::updateTargetTableAndIndex() {
     // Target table should be persistenttable
     // Update target table reference from table delegate, and its index reference
-    PersistentTable *targetTable = static_cast<PersistentTable*>(m_node->getTargetTable());
+    m_targetTable = static_cast<PersistentTable*>(m_node->getTargetTable());
 
-    m_index = targetTable->index(m_node->getTargetIndexName());
+    m_index = m_targetTable->index(m_node->getTargetIndexName());
     // Grab the Index from our inner table
     // We'll throw an error if the index is missing
     if (m_index == NULL)
     {
         VOLT_ERROR("Failed to retreive index '%s' from table '%s' for PlanNode"
                 " '%s'", m_node->getTargetIndexName().c_str(),
-                targetTable->name().c_str(), m_node->debug().c_str());
+                m_targetTable->name().c_str(), m_node->debug().c_str());
         delete [] m_searchKeyBackingStore;
         delete [] m_projectionExpressions;
         return ;
@@ -179,9 +179,9 @@ void IndexScanExecutor::updateTargetTableAndIndex() {
     assert(m_lookupType != INDEX_LOOKUP_TYPE_EQ ||
             m_searchKey.getSchema()->columnCount() == m_numOfSearchkeys);
 
-    assert(targetTable);
-    assert(targetTable == m_node->getTargetTable());
-    VOLT_DEBUG("IndexScan: %s.%s\n", targetTable->name().c_str(), m_index->getName().c_str());
+    assert(m_targetTable);
+    assert(m_targetTable == m_node->getTargetTable());
+    VOLT_DEBUG("IndexScan: %s.%s\n", m_targetTable->name().c_str(), m_index->getName().c_str());
 }
 
 bool IndexScanExecutor::p_execute(const NValueArray &params)
@@ -309,7 +309,7 @@ bool IndexScanExecutor::p_execute(const NValueArray &params)
         VOLT_DEBUG("Post Expression:\n%s", post_expression->debug(true).c_str());
     }
     assert (m_index);
-    assert (m_index == targetTable->index(m_node->getTargetIndexName()));
+    assert (m_index == m_targetTable->index(m_node->getTargetIndexName()));
 
     // INITIAL EXPRESSION
     AbstractExpression* initial_expression = m_node->getInitialExpression();
