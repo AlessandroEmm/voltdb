@@ -124,6 +124,7 @@ PersistentTable::~PersistentTable()
         delete m_views[i];
     }
 
+    // Indexes are deleted in parent class Table destructor.
 }
 
 // ------------------------------------------------------------------
@@ -243,7 +244,7 @@ void PersistentTable::truncateTable(VoltDBEngine* engine) {
         VOLT_ERROR("Failed to initialize table '%s' from catalog",m_name.c_str());
         return ;
     }
-    assert(tcd->exportEnabled());
+    assert(!tcd->exportEnabled());
     PersistentTable * emptyTable = tcd->getPersistentTable();
     assert(emptyTable);
     assert(emptyTable->views().size() == 0);
