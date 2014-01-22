@@ -221,27 +221,30 @@ void PersistentTable::truncateTableForUndo(VoltDBEngine * engine, TableCatalogDe
     BOOST_FOREACH(MaterializedViewMetadata * originalView, views) {
         PersistentTable * targetTable = originalView->targetTable();
         TableCatalogDelegate * targetTcd =  engine->getTableDelegate(targetTable->name());
-
+        // call decrement reference count on the newly constructed view table
+        targetTcd->deleteCommand();
+        // update the view table pointer with the original view
         targetTcd->setTable(targetTable);
     }
+    this->decrementRefcount();
+
     // reset base table pointer
     tcd->setTable(originalTable);
 
     engine->rebuildTableCollections();
-
-    BOOST_FOREACH(MaterializedViewMetadata * newView, m_views) {
-        PersistentTable * newViewTargetTable = newView->targetTable();
-        this->dropMaterializedView(newView);
-        newViewTargetTable->decrementRefcount();
-    }
-
-    this->decrementRefcount();
 }
 
 void PersistentTable::truncateTableRelease(PersistentTable *originalTable) {
     VOLT_DEBUG("**** Truncate table release *****\n");
     m_tuplesPinnedByUndo = 0;
     m_invisibleTuplesPendingDeleteCount = 0;
+
+    std::vector<MaterializedViewMetadata *> views = originalTable->views();
+    // reset all view table pointers
+    BOOST_FOREACH(MaterializedViewMetadata * originalView, views) {
+        PersistentTable * targetTable = originalView->targetTable();
+        targetTable->decrementRefcount();
+    }
     originalTable->decrementRefcount();
 }
 
