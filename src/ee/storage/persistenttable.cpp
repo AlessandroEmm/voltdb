@@ -230,7 +230,9 @@ void PersistentTable::truncateTableForUndo(VoltDBEngine * engine, TableCatalogDe
     engine->rebuildTableCollections();
 
     BOOST_FOREACH(MaterializedViewMetadata * newView, m_views) {
+        PersistentTable * newViewTargetTable = newView->targetTable();
         this->dropMaterializedView(newView);
+        newViewTargetTable->decrementRefcount();
     }
 
     this->decrementRefcount();
